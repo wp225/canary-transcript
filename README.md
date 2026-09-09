@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="static/canary.png" alt="" height="150" />
+  <img src="static/Canary_blink.gif" alt="" height="150" />
 </p>
 
 <h1 align="center">Canary Transcript</h1>

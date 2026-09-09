@@ -2,16 +2,6 @@ const fileInput = document.getElementById('audio-file');
 const startButton = document.getElementById('start-upload');
 const status = document.getElementById('status');
 const picker = document.getElementById('sample-picker');
-const crest = document.querySelector('.crest');
-
-/* The crest blinks once the recording on screen is the user's own; the bundled
-   samples keep the still. Both URLs come from the markup, so they stay correct
-   under the Pages subpath as well as at the server root. */
-const CREST_STILL = crest ? crest.getAttribute('src') : '';
-const CREST_BLINK = CREST_STILL.replace(/canary\.png$/i, 'Canary_blink.gif');
-function setCrest(blinking) {
-  if (crest) crest.src = blinking ? CREST_BLINK : CREST_STILL;
-}
 
 /* The GitHub Pages copy has no backend: samples are pre-baked to JSON by
    build_site.py, and paths must stay relative because project Pages are served
@@ -455,7 +445,6 @@ async function loadPreloadedSamples() {
 
 async function loadSamplePreview(sample, button) {
   const sampleId = sample.id;
-  setCrest(false);
   picker.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
   showStatus('Loading sample view...');
   try {
@@ -855,7 +844,6 @@ async function uploadAndTranscribe(file) {
   }
   showStatus('Segmenting and transcribing...');
   startButton.style.pointerEvents = 'none';
-  setCrest(true);
 
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = URL.createObjectURL(file);
@@ -872,7 +860,6 @@ async function uploadAndTranscribe(file) {
     showResults(payload, true);
     showStatus(`Done — ${payload.segments.length} syllables detected.`);
   } catch (error) {
-    setCrest(false);  // nothing of the user's is on screen after a failure
     showStatus(error.message, true);
   } finally {
     startButton.style.pointerEvents = '';
