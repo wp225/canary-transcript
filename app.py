@@ -444,10 +444,6 @@ async def load_sample(sample_id: str) -> JSONResponse:
         "filename": item["filename"],
         "id": item["id"],
     }
-    payload["sample_preview"] = {
-        "image": item["spectrogram"],
-        "transcript": item["transcript"],
-    }
     return JSONResponse(payload)
 
 

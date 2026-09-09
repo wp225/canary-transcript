@@ -35,6 +35,12 @@ header h1 {
   color: rgba(var(--ink), 0.52); text-indent: 0.36em; margin-bottom: 1.2rem;
 }
 header h1 span { display: block; font-weight: 300; color: rgba(var(--ink), 0.22); }
+/* Crest between CANARY and TRANSCRIPT. Sized in em so it tracks the wordmark
+   when the masthead shrinks, and pulled left to offset the trailing letter-space. */
+header h1 .crest {
+  height: 1.15em; width: auto; vertical-align: -0.28em;
+  margin-left: -0.04em; margin-right: 0.02em;
+}
 header .subtitle {
   max-width: 48ch; margin: 0 auto 2.2rem; font-size: 10px; font-weight: 400;
   letter-spacing: 2.5px; line-height: 1.8; text-transform: uppercase;

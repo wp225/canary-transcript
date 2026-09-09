@@ -1,50 +1,88 @@
-# canary-transcript
+<p align="center">
+  <img src="static/canary.png" alt="" height="150" />
+</p>
 
-Upload a canary recording and see the syllables unfold in time: segmentation,
-per-syllable transcription, and a 3-D PCA view of the syllable manifold.
+<h1 align="center">Canary Transcript</h1>
 
-## Run locally (full demo, including upload)
+<p align="center">
+  Upload a canary recording and watch its syllables unfold in time.
+</p>
+
+---
+
+Birdsong is made of short, repeated syllables. This demo segments a recording
+into those syllables, gives each one a readable label, and plots them together
+so the shape of a song is visible at a glance.
+
+- **Segmentation** — a conv-RNN marks syllable boundaries on the spectrogram
+- **Transcription** — each syllable gets a label like `díiiin` or `tib`
+- **Manifold** — every syllable becomes a 26-D feature vector, projected onto
+  the corpus's first three principal components and linked in song order
+
+Click a syllable to hear it, drag to scroll, `Ctrl`/`⌘` + scroll to zoom.
+
+## Running it
 
 ```bash
-python -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+python -m venv .venv
+./.venv/bin/pip install -r requirements.txt
 ./.venv/bin/python -m uvicorn app:app --reload
 ```
 
-The segmentation model and the clustering artifact live in the sibling
-`birdtranscript` research repo, not here. Point at a checkout elsewhere with:
+Then open http://127.0.0.1:8000.
+
+The model and the clustering artifact live in the sibling `birdtranscript`
+research repo, not here. If your checkout is elsewhere:
 
 ```bash
 BIRDTRANSCRIPT_ROOT=/path/to/birdtranscript ./.venv/bin/python -m uvicorn app:app
 ```
 
+## Layout
+
+```
+app.py             FastAPI server: segmentation, transcription, PCA, spectrograms
+build_site.py      bakes the static GitHub Pages copy into site/
+static/            the whole front end — one HTML file, one CSS file, one JS file
+site/              built Pages artifact (committed; see below)
+tests/             unittest suite for the segmentation front end
+demo_samples/      source recordings, kept local (large media, not in git)
+```
+
 ## GitHub Pages
 
-Pages serves static files only, so the deployed site is a baked copy:
-
-- the three bundled samples are transcribed ahead of time into `site/api/`
-- spectrograms are written to `site/spectrograms/` instead of inlined as base64
-- **upload is disabled** on Pages — it needs the model, so it only works locally
+Pages serves static files only, so the deployed copy is baked ahead of time:
+the bundled samples are transcribed into `site/api/`, spectrograms are written
+to `site/spectrograms/`, and every path is relative because project Pages are
+served from `/<repo>/`. **Upload is disabled there** — it needs the model, so it
+works only against a local server.
 
 `site/` is committed rather than built in CI, because CI has no access to the
-model. After changing anything in `static/`, `app.py`, or the samples, rebuild
-and commit the result:
+model. After changing `static/`, `app.py`, or the samples, rebuild and commit:
 
 ```bash
 ./.venv/bin/python build_site.py
 ```
 
-Rebuilding needs the model *and* the source recordings in `demo_samples/`, which
-are kept out of git as large local media — so only a machine that has both can
-regenerate `site/`.
+Rebuilding needs both the model and the recordings in `demo_samples/`, which are
+kept out of git as large local media — so only a machine with both can do it.
+Pushing to `main` deploys `site/` via `.github/workflows/deploy-pages.yml`, which
+fails the build if `site/static/` has drifted from `static/`, so a forgotten
+rebuild is caught rather than silently shipping a stale page.
 
-Pushing to `main` then deploys `site/` via `.github/workflows/deploy-pages.yml`.
-The workflow fails the build if `site/static/` has drifted from `static/`, so a
-forgotten rebuild is caught rather than silently shipping a stale page.
-
-To preview exactly what Pages will serve, including the `/<repo>/` subpath:
+To preview exactly what Pages will serve, subpath included:
 
 ```bash
 mkdir -p /tmp/pages && ln -sfn "$PWD/site" /tmp/pages/canary-transcript
 cd /tmp/pages && python -m http.server 8093
 # open http://127.0.0.1:8093/canary-transcript/
+```
+
+Serve it over HTTP rather than opening `site/index.html` directly — browsers
+block `fetch()` on `file://` URLs, so the baked data never loads.
+
+## Tests
+
+```bash
+./.venv/bin/python -m unittest discover -s tests
 ```
