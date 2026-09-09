@@ -1,6 +1,7 @@
 const fileInput = document.getElementById('audio-file');
 const startButton = document.getElementById('start-upload');
 const status = document.getElementById('status');
+const picker = document.getElementById('sample-picker');
 const resultsSection = document.getElementById('results');
 const summary = document.getElementById('summary');
 const notice = document.getElementById('notice');
@@ -37,7 +38,7 @@ const widthCache = new Map();
 
 function showStatus(message, isError = false) {
   status.textContent = message;
-  status.style.color = isError ? '#fca5a5' : '';
+  status.classList.toggle('error', Boolean(isError));
 }
 
 /* ── geometry ─────────────────────────────────────────────────────────────── */
@@ -311,8 +312,8 @@ function tick() {
   }
 }
 
-player.addEventListener('play', () => { playButton.textContent = '❚❚'; requestAnimationFrame(tick); });
-player.addEventListener('pause', () => { playButton.textContent = '▶'; });
+player.addEventListener('play', () => { playButton.textContent = '❚❚'; playButton.classList.add('playing'); requestAnimationFrame(tick); });
+player.addEventListener('pause', () => { playButton.textContent = '▶'; playButton.classList.remove('playing'); });
 player.addEventListener('seeked', () => { updatePlayhead(); setActive(indexAt(player.currentTime)); });
 
 playButton.addEventListener('click', () => {
@@ -369,9 +370,8 @@ function render(payload) {
   activeIndex = -1;
   widthCache.clear();
 
-  const origin = payload.source ? `${payload.source.bird_name} · ` : '';
   summary.textContent =
-    `${origin}${payload.segments.length} syllables · ${payload.duration_s.toFixed(2)} s · ${payload.segmentation_model}`;
+    `${payload.segments.length} syllables · ${payload.duration_s.toFixed(2)} s · ${payload.segmentation_model}`;
 
   buildSpectrogramLayer();
 
@@ -390,7 +390,6 @@ function render(payload) {
   }
 
   resultsSection.hidden = false;
-  document.body.classList.add('has-results');
   fitZoom();
   pxPerSec = minPxPerSec;
   layout();
@@ -406,6 +405,51 @@ window.addEventListener('resize', () => {
   baseUnit = null;  // panel size changed, refit
   drawScatter();
 });
+
+/* The full view lives in the landing page; the picker just swaps what it shows. */
+function showResults(payload, compact = false) {
+  document.body.classList.toggle('has-results', compact);  // uploads shrink the masthead; samples don't
+  resultsSection.hidden = false;
+  render(payload);
+}
+
+async function loadPreloadedSamples() {
+  try {
+    const response = await fetch('/api/samples');
+    if (!response.ok) throw new Error('Unable to load samples');
+    const samples = await response.json();
+
+    picker.innerHTML = '';
+    samples.forEach((sample) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = `${sample.bird_name} · ${sample.filename}`;
+      button.addEventListener('click', () => loadSamplePreview(sample, button));
+      picker.appendChild(button);
+    });
+    if (samples.length) picker.firstElementChild.click();
+  } catch (error) {
+    picker.textContent = 'Samples are unavailable right now.';
+  }
+}
+
+async function loadSamplePreview(sample, button) {
+  const sampleId = sample.id;
+  picker.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+  showStatus('Loading sample view...');
+  try {
+    const response = await fetch(`/api/samples/${encodeURIComponent(sampleId)}`, { method: 'POST' });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || 'Request failed');
+    if (sample.audio) player.src = `/${sample.audio.replace(/\\/g, '/')}`;
+    showResults(payload);
+    showStatus(`Loaded ${payload.source?.bird_name || sampleId}.`);
+  } catch (error) {
+    showStatus(error.message, true);
+  }
+}
+
+loadPreloadedSamples();
 
 /* ── 3-D PCA scatter ──────────────────────────────────────────────────────────
    Small hand-rolled projector: rotate, apply weak perspective, painter's-algorithm
@@ -461,12 +505,12 @@ function project3(point) {
 }
 
 
-/* Emission-time ramp: deep violet → magenta → orange → amber. */
+/* Emission-time ramp, cool → warm, all dark enough to read on cream paper. */
 const RAMP = [
-  [0.0, [76, 29, 149]],
-  [0.35, [192, 38, 211]],
-  [0.72, [249, 115, 22]],
-  [1.0, [251, 191, 36]],
+  [0.0, [40, 58, 100]],
+  [0.35, [92, 66, 106]],
+  [0.72, [160, 50, 50]],
+  [1.0, [166, 112, 40]],
 ];
 
 function rampColour(t, alpha = 1) {
@@ -545,7 +589,7 @@ function drawScatter() {
   const cy = height / 2 + 8;
   const depth = 3.4;
 
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = '#f2ede4';
   ctx.fillRect(0, 0, width, height);
 
   if (baseUnit === null) fitScatter(width - padLeft - padRight, height);
@@ -558,7 +602,7 @@ function drawScatter() {
   };
 
   // reference corpus: dim haze behind everything
-  ctx.fillStyle = 'rgba(196, 188, 176, 0.15)';
+  ctx.fillStyle = 'rgba(42, 42, 50, 0.2)';
   data.pca.reference.forEach((p) => {
     const { x, y, f } = toScreen(p);
     ctx.fillRect(x, y, Math.max(1, 1.3 * f), Math.max(1, 1.3 * f));
@@ -569,7 +613,7 @@ function drawScatter() {
     .filter(Boolean);
 
   // song order: faint links between consecutive syllables
-  ctx.strokeStyle = 'rgba(233, 228, 218, 0.16)';
+  ctx.strokeStyle = 'rgba(42, 42, 50, 0.14)';
   ctx.lineWidth = 0.7;
   ctx.beginPath();
   points.forEach((pt, i) => {
@@ -609,16 +653,16 @@ function drawScatter() {
     const colour = rampColour(segmentRamp(item.seg), 0.95);
     const size = (active ? 7 : 3.6) * f;
 
-    ctx.shadowColor = active ? 'rgba(250, 204, 21, 0.9)' : colour;
-    ctx.shadowBlur = (active ? 14 : 7) * f;
-    ctx.fillStyle = active ? '#fde047' : colour;
+    ctx.shadowColor = 'rgba(160, 50, 50, 0.35)';
+    ctx.shadowBlur = active ? 10 * f : 0;
+    ctx.fillStyle = active ? 'rgba(160, 50, 50, 0.95)' : colour;
     ctx.fillRect(x - size / 2, y - size / 2, size, size);
     ctx.shadowBlur = 0;
 
     // selection box, as in the reference manifold
     if (active) {
       const box = 15 * f;
-      ctx.strokeStyle = 'rgba(253, 224, 71, 0.95)';
+      ctx.strokeStyle = 'rgba(160, 50, 50, 0.8)';
       ctx.lineWidth = 1.1;
       ctx.strokeRect(x - box / 2, y - box / 2, box, box);
     }
@@ -627,11 +671,11 @@ function drawScatter() {
 
     // per-marker numerics, only where a slot was reserved above
     if (kept.has(item.index)) {
-      ctx.font = '8.5px ui-monospace, monospace';
-      ctx.fillStyle = active ? 'rgba(253, 224, 71, 0.95)' : 'rgba(233, 228, 218, 0.5)';
+      ctx.font = '8.5px "JetBrains Mono", ui-monospace, monospace';
+      ctx.fillStyle = active ? 'rgba(160, 50, 50, 0.85)' : 'rgba(42, 42, 50, 0.5)';
       ctx.fillText((item.seg.duration_ms / 1000).toFixed(4), x + 7 * f, y - 2);
-      ctx.font = '7px ui-monospace, monospace';
-      ctx.fillStyle = active ? 'rgba(253, 224, 71, 0.7)' : 'rgba(164, 157, 146, 0.42)';
+      ctx.font = '7px "JetBrains Mono", ui-monospace, monospace';
+      ctx.fillStyle = active ? 'rgba(160, 50, 50, 0.6)' : 'rgba(42, 42, 50, 0.32)';
       ctx.fillText(`${item.seg.label} ${item.seg.start_s.toFixed(2)}s`, x + 7 * f, y + 7);
     }
   });
@@ -643,21 +687,23 @@ function drawScatterChrome(ctx, width, height, toScreen) {
   const spec = data.pca;
 
   // title block
-  ctx.font = 'italic 13px Georgia, "Times New Roman", serif';
-  ctx.fillStyle = 'rgba(233, 228, 218, 0.92)';
+  ctx.letterSpacing = '2.5px';  // ignored on browsers without canvas letterSpacing
+  ctx.font = '500 10px "JetBrains Mono", "JetBrains Mono", ui-monospace, monospace';
+  ctx.fillStyle = 'rgba(42, 42, 50, 0.42)';
   ctx.fillText('SPATIOTEMPORAL SYLLABLE MANIFOLD', 16, 24);
-  ctx.font = 'italic 10px Georgia, "Times New Roman", serif';
-  ctx.fillStyle = 'rgba(164, 157, 146, 0.75)';
+  ctx.font = '400 9px "JetBrains Mono", "JetBrains Mono", ui-monospace, monospace';
+  ctx.fillStyle = 'rgba(42, 42, 50, 0.3)';
   ctx.fillText('(26 FEATURES → 3D PCA)', 16, 40);
 
   const variance = spec.explained_variance;
   const total = variance.reduce((a, b) => a + b, 0);
-  ctx.font = '8.5px ui-monospace, monospace';
-  ctx.fillStyle = 'rgba(164, 157, 146, 0.6)';
+  ctx.font = '8.5px "JetBrains Mono", ui-monospace, monospace';
+  ctx.fillStyle = 'rgba(42, 42, 50, 0.3)';
   ctx.fillText(
     `PC1-3  ${(total * 100).toFixed(1)}%  (${variance.map((v) => `${(v * 100).toFixed(1)}`).join(' / ')})`,
     16, 54,
   );
+  ctx.letterSpacing = '0px';
 
   // vertical emission-time scale
   const barX = 20;
@@ -667,26 +713,26 @@ function drawScatterChrome(ctx, width, height, toScreen) {
     ctx.fillStyle = rampColour(1 - i / barH, 0.95);
     ctx.fillRect(barX, barTop + i, 7, 1);
   }
-  ctx.font = '7.5px ui-monospace, monospace';
-  ctx.fillStyle = 'rgba(164, 157, 146, 0.7)';
+  ctx.font = '7.5px "JetBrains Mono", ui-monospace, monospace';
+  ctx.fillStyle = 'rgba(42, 42, 50, 0.34)';
   ctx.fillText(`${data.duration_s.toFixed(1)}s`, barX + 11, barTop + 5);
   ctx.fillText('0.0s', barX + 11, barTop + barH);
   ctx.save();
   ctx.translate(barX - 6, barTop + barH / 2);
   ctx.rotate(-Math.PI / 2);
-  ctx.fillStyle = 'rgba(164, 157, 146, 0.55)';
+  ctx.fillStyle = 'rgba(42, 42, 50, 0.28)';
   ctx.fillText('EMISSION TIME', -34, 0);
   ctx.restore();
 
   // coefficient readout
   const listX = width - 96;
-  ctx.font = '6.5px ui-monospace, monospace';
+  ctx.font = '6.5px "JetBrains Mono", ui-monospace, monospace';
   const names = spec.feature_names || [];
   const rowH = Math.min(11, (height - 60) / Math.max(names.length, 1));
   names.forEach((name, i) => {
     const y = 30 + i * rowH;
     const load = spec.loadings[i] ?? 0;
-    ctx.fillStyle = `rgba(233, 228, 218, ${0.22 + load * 0.5})`;
+    ctx.fillStyle = `rgba(42, 42, 50, ${0.22 + load * 0.5})`;
     ctx.fillText(name.toUpperCase().slice(0, 15), listX + 16, y);
     ctx.fillStyle = rampColour(load, 0.5 + load * 0.45);
     ctx.fillRect(listX, y - 4, 13 * load + 1, 3);
@@ -698,17 +744,17 @@ function drawScatterChrome(ctx, width, height, toScreen) {
   const axes = [[[1, 0, 0], 'PC1'], [[0, 1, 0], 'PC2'], [[0, 0, 1], 'PC3']];
   axes.forEach(([axis, name]) => {
     const [x, y] = project3(axis);
-    ctx.strokeStyle = 'rgba(164, 157, 146, 0.45)';
+    ctx.strokeStyle = 'rgba(42, 42, 50, 0.25)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(gx, gy);
     ctx.lineTo(gx + x * 22, gy - y * 22);
     ctx.stroke();
-    ctx.font = '6.5px ui-monospace, monospace';
-    ctx.fillStyle = 'rgba(164, 157, 146, 0.8)';
+    ctx.font = '6.5px "JetBrains Mono", ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(42, 42, 50, 0.4)';
     ctx.fillText(name, gx + x * 32 - 6, gy - y * 32 + 2);
   });
-  ctx.strokeStyle = 'rgba(248, 113, 113, 0.95)';
+  ctx.strokeStyle = 'rgba(160, 50, 50, 0.8)';
   ctx.lineWidth = 1;
   ctx.strokeRect(gx - 3, gy - 3, 6, 6);
 }
@@ -775,90 +821,10 @@ scatter.addEventListener('click', (event) => {
   }
 });
 
-/* ── bundled examples ─────────────────────────────────────────────────────────
-   The stored transcripts in assets/data.json predate the segmentation fix, so the
-   audio is re-run through the live pipeline rather than replayed from the file. */
-const examplesButton = document.getElementById('show-examples');
-const examplePicker = document.getElementById('example-picker');
-let examplesLoaded = false;
-
-function renderExamples(items) {
-  const groups = new Map();
-  items.forEach((item) => {
-    if (!groups.has(item.bird_name)) groups.set(item.bird_name, []);
-    groups.get(item.bird_name).push(item);
-  });
-
-  examplePicker.innerHTML = '';
-  groups.forEach((entries, bird) => {
-    const group = document.createElement('div');
-    group.className = 'example-group';
-    const heading = document.createElement('h4');
-    heading.textContent = bird;
-    group.appendChild(heading);
-
-    const chips = document.createElement('div');
-    chips.className = 'example-chips';
-    entries.forEach((item) => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'example-chip';
-      chip.innerHTML = `${item.id}<span>${item.duration_s.toFixed(1)}s</span>`;
-      chip.addEventListener('click', () => {
-        document.querySelectorAll('.example-chip').forEach((c) => c.classList.remove('active'));
-        chip.classList.add('active');
-        loadExample(item);
-      });
-      chips.appendChild(chip);
-    });
-    group.appendChild(chips);
-    examplePicker.appendChild(group);
-  });
-}
-
-async function openExamples() {
-  if (!examplesLoaded) {
-    showStatus('Loading examples...');
-    try {
-      const response = await fetch('/api/examples');
-      const items = await response.json();
-      if (!response.ok) throw new Error(items.detail || 'Could not load examples');
-      if (!items.length) { showStatus('No bundled examples found.', true); return; }
-      renderExamples(items);
-      examplesLoaded = true;
-      showStatus(`${items.length} bundled recordings — pick one to transcribe.`);
-    } catch (error) {
-      showStatus(error.message, true);
-      return;
-    }
-  }
-  examplePicker.hidden = !examplePicker.hidden;
-}
-
-async function loadExample(item) {
-  showStatus(`Segmenting ${item.id}...`);
-  if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
-  player.src = item.audio_url;
-
-  try {
-    const response = await fetch(`/api/examples/${encodeURIComponent(item.id)}`, { method: 'POST' });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || 'Request failed');
-
-    render(payload);
-    showStatus(`${item.bird_name} · ${item.filename} — ${payload.segments.length} syllables.`);
-  } catch (error) {
-    showStatus(error.message, true);
-  }
-}
-
-examplesButton.addEventListener('click', openExamples);
-
 /* ── upload ───────────────────────────────────────────────────────────────── */
 async function uploadAndTranscribe(file) {
   showStatus('Segmenting and transcribing...');
   startButton.style.pointerEvents = 'none';
-  document.querySelectorAll('.example-chip').forEach((c) => c.classList.remove('active'));
 
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = URL.createObjectURL(file);
@@ -872,7 +838,7 @@ async function uploadAndTranscribe(file) {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || 'Request failed');
 
-    render(payload);
+    showResults(payload, true);
     showStatus(`Done — ${payload.segments.length} syllables detected.`);
   } catch (error) {
     showStatus(error.message, true);

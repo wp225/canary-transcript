@@ -1,4 +1,3 @@
-import os
 import sys
 import unittest
 from pathlib import Path
@@ -83,44 +82,6 @@ class SpectrogramRenderTests(unittest.TestCase):
             self.assertLessEqual(tick["frac"], 1.0)
         # mel axis is monotonic: higher frequency sits higher in the image
         self.assertEqual([t["frac"] for t in ticks], sorted(t["frac"] for t in ticks))
-
-
-class ExampleCatalogueTests(unittest.TestCase):
-    def setUp(self):
-        app.load_examples.cache_clear()
-        self.addCleanup(app.load_examples.cache_clear)
-        self._original = app.EXAMPLES_PATH
-        self.addCleanup(setattr, app, "EXAMPLES_PATH", self._original)
-
-    def _write_catalogue(self, entries):
-        import json
-        import tempfile
-
-        # outside the repo: only the audio paths inside it are resolved against BASE_DIR
-        handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
-        json.dump(entries, handle)
-        handle.close()
-        self.addCleanup(os.unlink, handle.name)
-        app.EXAMPLES_PATH = Path(handle.name)
-
-    def test_entries_escaping_the_project_are_rejected(self):
-        self._write_catalogue([
-            {"id": "escape", "bird_name": "X", "audio": "../../../../etc/passwd"},
-            {"id": "missing", "bird_name": "X", "audio": "assets/audio/does_not_exist.wav"},
-        ])
-
-        self.assertEqual(app.load_examples(), {})
-
-    def test_real_entries_are_listed_with_a_served_url(self):
-        self._write_catalogue([
-            {"id": "sample1", "bird_name": "Canary #3", "audio": "assets/audio/sample1.wav"},
-        ])
-
-        examples = app.load_examples()
-
-        self.assertIn("sample1", examples)
-        self.assertEqual(examples["sample1"]["audio_url"], "/assets/audio/sample1.wav")
-        self.assertTrue(examples["sample1"]["path"].is_file())
 
 
 if __name__ == "__main__":

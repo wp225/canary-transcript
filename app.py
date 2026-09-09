@@ -1,6 +1,5 @@
 import base64
 import io
-import json
 import os
 import pickle
 import sys
@@ -17,6 +16,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import json
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from scipy import signal
@@ -35,7 +35,7 @@ EXTRACTOR_PATH = BIRDTRANSCRIPT_ROOT / "scripts/extract_features_temporal.py"
 SEGMENT_MODEL_PATH = BIRDTRANSCRIPT_ROOT / "saved_models/pooled/pooled_all.pt"
 SEGMENT_MODEL_MODULE_PATH = BIRDTRANSCRIPT_ROOT / "models/conv_rnn.py"
 INDEX_HTML = BASE_DIR / "static" / "index.html"
-EXAMPLES_PATH = BASE_DIR / "assets" / "data.json"
+SAMPLE_INDEX_PATH = BASE_DIR / "demo_samples" / "all_samples.json"
 
 # Preprocessing constants, fixed by how pooled_all.pt was trained
 # (birdtranscript/dataset.py CanariesSegmentationDataset).
@@ -66,6 +66,13 @@ DISPLAY_HEIGHT_PX = 340
 DISPLAY_PX_PER_S = 200  # native resolution; the client may scale beyond this
 DISPLAY_MAX_WIDTH_PX = 12000
 FREQ_TICKS_HZ = (500, 1000, 2000, 4000, 8000, 16000)
+# Cream paper -> warm mid -> ink, so quiet background matches the page ground.
+# Stops are weighted toward the dark end so mid energy is already legible ink.
+SPEC_CMAP = matplotlib.colors.LinearSegmentedColormap.from_list(
+    "sonoma",
+    [(0.0, "#f2ede4"), (0.15, "#e0d6c4"), (0.35, "#a8907a"),
+     (0.6, "#68503f"), (0.8, "#33282a"), (1.0, "#14141c")],
+)
 
 # PCA of the 26-d syllable features. Fitted once on the pipeline's own corpus so the
 # axes mean the same thing for every upload, rather than being refit per recording.
@@ -103,41 +110,7 @@ def load_segmentation_model() -> torch.nn.Module:
 
 app = FastAPI(title="Bird Transcript Demo", version="0.2.0")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-for _media in ("assets", "demo_samples"):
-    if (BASE_DIR / _media).is_dir():
-        app.mount(f"/{_media}", StaticFiles(directory=str(BASE_DIR / _media)), name=_media)
-
-
-@lru_cache(maxsize=1)
-def load_examples() -> Dict[str, Dict[str, Any]]:
-    """Bundled recordings from assets/data.json, keyed by id.
-
-    Only the audio is used: the transcripts stored alongside it were produced by an
-    earlier pipeline, so examples are re-transcribed live like any other upload.
-    """
-    if not EXAMPLES_PATH.exists():
-        return {}
-
-    with EXAMPLES_PATH.open() as fh:
-        entries = json.load(fh)
-
-    examples: Dict[str, Dict[str, Any]] = {}
-    for entry in entries:
-        rel = entry.get("audio")
-        if not rel or not entry.get("id"):
-            continue
-        path = (BASE_DIR / rel).resolve()
-        # never serve anything outside the project, whatever the JSON says
-        if not path.is_file() or BASE_DIR not in path.parents:
-            continue
-        examples[str(entry["id"])] = {
-            "id": str(entry["id"]),
-            "bird_name": entry.get("bird_name", "Unknown"),
-            "filename": entry.get("filename", path.name),
-            "audio_url": "/" + rel.lstrip("/"),
-            "path": path,
-        }
-    return examples
+app.mount("/demo_samples", StaticFiles(directory=str(BASE_DIR / "demo_samples")), name="demo_samples")
 
 
 @lru_cache(maxsize=1)
@@ -405,7 +378,7 @@ def build_spectrogram(audio: np.ndarray, sr: int) -> Dict[str, Any]:
     ax = fig.add_axes((0.0, 0.0, 1.0, 1.0))  # fills the canvas: no margins, no ticks
     ax.set_axis_off()
     ax.imshow(
-        db, origin="lower", aspect="auto", cmap="magma",
+        db, origin="lower", aspect="auto", cmap=SPEC_CMAP,
         extent=(0.0, duration_s, 0.0, float(DISPLAY_N_MELS)),
         vmin=db.max() - TOP_DB, vmax=db.max(),
     )
@@ -445,45 +418,35 @@ def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/examples")
-def list_examples() -> JSONResponse:
-    examples = load_examples()
-    return JSONResponse(
-        [
-            {
-                "id": item["id"],
-                "bird_name": item["bird_name"],
-                "filename": item["filename"],
-                "audio_url": item["audio_url"],
-                "duration_s": round(librosa.get_duration(path=str(item["path"])), 2),
-            }
-            for item in examples.values()
-        ]
-    )
+@app.get("/api/samples")
+def list_samples() -> JSONResponse:
+    with SAMPLE_INDEX_PATH.open("r", encoding="utf-8") as fh:
+        items = json.load(fh)
+    return JSONResponse(items[:3])
 
 
-@app.post("/api/examples/{example_id}")
-def transcribe_example(example_id: str) -> JSONResponse:
-    item = load_examples().get(example_id)
+@app.post("/api/samples/{sample_id}")
+async def load_sample(sample_id: str) -> JSONResponse:
+    with SAMPLE_INDEX_PATH.open("r", encoding="utf-8") as fh:
+        items = json.load(fh)
+    item = next((entry for entry in items if entry["id"] == sample_id), None)
     if item is None:
-        raise HTTPException(status_code=404, detail="Unknown example.")
+        raise HTTPException(status_code=404, detail="Sample not found")
 
-    try:
-        audio, _ = librosa.load(str(item["path"]), sr=SR, mono=True, duration=MAX_AUDIO_S)
-        if audio.size < N_FFT * 4:
-            raise HTTPException(status_code=400, detail="Example is too short to segment.")
-        payload = transcribe_audio(audio)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Transcription failed: {exc}") from exc
+    audio_path = BASE_DIR / item["audio"]
+    if not audio_path.exists():
+        raise HTTPException(status_code=404, detail="Sample audio not found")
 
+    audio, _ = librosa.load(audio_path, sr=SR, mono=True, duration=MAX_AUDIO_S)
+    payload = transcribe_audio(audio)
     payload["source"] = {
-        "id": item["id"],
         "bird_name": item["bird_name"],
         "filename": item["filename"],
-        "audio_url": item["audio_url"],
+        "id": item["id"],
+    }
+    payload["sample_preview"] = {
+        "image": item["spectrogram"],
+        "transcript": item["transcript"],
     }
     return JSONResponse(payload)
 
