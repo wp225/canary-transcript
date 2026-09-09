@@ -8,6 +8,10 @@
   --line: rgba(42, 42, 50, 0.12);
   --line-strong: rgba(42, 42, 50, 0.18);
   --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas", monospace;
+  /* Masthead crest. Tweak these two: size is the bird's height relative to the
+     wordmark, lift seats it on the baseline (raise it as size grows). */
+  --crest-size: 1.5em;
+  --crest-lift: -0.42em;
 }
 html { scroll-behavior: smooth; }
 body {
@@ -38,7 +42,7 @@ header h1 span { display: block; font-weight: 300; color: rgba(var(--ink), 0.22)
 /* Crest between CANARY and TRANSCRIPT. Sized in em so it tracks the wordmark
    when the masthead shrinks, and pulled left to offset the trailing letter-space. */
 header h1 .crest {
-  height: 1.5em; width: auto; vertical-align: -0.42em;
+  height: var(--crest-size); width: auto; vertical-align: var(--crest-lift);
   margin-left: -0.04em; margin-right: 0.02em;
 }
 header .subtitle {
