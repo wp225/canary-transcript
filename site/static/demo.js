@@ -435,7 +435,11 @@ async function loadPreloadedSamples() {
     });
     if (samples.length) picker.firstElementChild.click();
   } catch (error) {
-    picker.textContent = 'Samples are unavailable right now.';
+    // fetch() is blocked on file:// URLs, so double-clicking the built page fails
+    // here rather than anywhere obvious. Say so instead of blaming the samples.
+    picker.textContent = location.protocol === 'file:'
+      ? 'Serve this page over HTTP — the browser blocks data loading on file:// URLs.'
+      : 'Samples are unavailable right now.';
   }
 }
 
