@@ -219,11 +219,11 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Large local media and intermediates — kept on disk, never pushed
-# (canary_tokens_slim.csv alone is 157 MB, past GitHub's 100 MB file limit)
-canary_tokens_slim.csv
+# Local-only working files: kept on disk, never pushed.
+# archive/ holds retired media and intermediates (rendered mp4s, the 157 MB
+# canary_tokens_slim.csv) that no code reads but that are not regenerable here.
+/archive/
 *.mp4
-video/
 # Anchored to the repo root: the source media stays local, but the three small
 # sample copies under site/ must ship, or Pages 404s on audio playback.
 /demo_samples/
