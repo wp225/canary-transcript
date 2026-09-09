@@ -165,8 +165,9 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
+# mkdocs documentation  (not used here)
+# site/ is the built GitHub Pages artifact and IS committed: CI cannot rebuild
+# it, because the segmentation model lives in the sibling birdtranscript repo.
 
 # mypy
 .mypy_cache/
@@ -223,4 +224,6 @@ __marimo__/
 canary_tokens_slim.csv
 *.mp4
 video/
-demo_samples/
+# Anchored to the repo root: the source media stays local, but the three small
+# sample copies under site/ must ship, or Pages 404s on audio playback.
+/demo_samples/

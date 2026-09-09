@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <title>Canary Transcript Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="static/demo.css?v=20260908-8" />
+</head>
+<body>
+
+<header class="hero">
+  <div class="container">
+    <div class="pill">Birdsong viewer</div>
+    <h1>Canary<span>Transcript</span></h1>
+    <p class="subtitle">
+      Upload a recording and see the syllables unfold in time.
+    </p>
+    <div class="btn-row">
+      <label class="btn primary" id="start-upload" for="audio-file">Upload your recording</label>
+    </div>
+    <input id="audio-file" type="file" accept=".wav,.mp3,.flac,.ogg,.m4a,.aac" />
+    <p id="status" class="status">WAV, MP3, FLAC, OGG or M4A. The first 30 seconds are analysed.</p>
+    <div class="sample-picker" id="sample-picker"></div>
+    <section id="results" class="results-section" hidden>
+      <div class="container">
+        <div class="result-card">
+          <div class="card-header">
+            <span class="bird-badge">Segmentation</span>
+            <span class="card-meta" id="summary"></span>
+          </div>
+          <div class="zoom-bar">
+            <button class="zoom-btn" id="zoom-out" type="button" title="Zoom out">−</button>
+            <input type="range" id="zoom-range" min="0" max="1000" value="0" aria-label="Zoom" />
+            <button class="zoom-btn" id="zoom-in" type="button" title="Zoom in">+</button>
+            <button class="zoom-btn wide" id="zoom-fit" type="button">Fit</button>
+            <span class="card-meta" id="zoom-label"></span>
+          </div>
+
+          <div class="spec-viewer">
+            <div class="freq-gutter" id="freq-gutter"></div>
+            <div class="spec-scroll" id="spec-scroll">
+              <div class="spec-track" id="spec-track">
+                <img id="spectrogram" alt="Spectrogram with detected syllable boundaries" />
+                <div class="seg-layer" id="seg-layer"></div>
+                <div class="playhead" id="playhead"></div>
+                <div class="ruler" id="ruler"></div>
+                <div class="label-lane" id="label-lane"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="player-row">
+            <button id="play-btn" class="play-btn" type="button">▶</button>
+            <audio id="player" preload="auto"></audio>
+            <span class="card-meta" id="hint">Click a syllable to hear it · drag to scroll · Ctrl/⌘ + scroll to zoom</span>
+          </div>
+
+          <p id="notice" class="notice" hidden></p>
+        </div>
+
+        <div class="result-card manifold-card">
+          <canvas id="scatter" class="scatter"></canvas>
+          <p class="card-meta scatter-hint">
+            Each syllable's 26-D feature vector projected onto the first three principal
+            components of the corpus. Grey haze is the reference corpus; markers are this
+            recording, coloured by emission time and linked in song order.
+            Drag to rotate · scroll to zoom · click a marker to play it.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+</header>
+
+<footer>
+  <div class="container">
+    Canary Transcript &nbsp;|&nbsp;
+    <a href="https://github.com/wp225/bird-transcript">GitHub ↗</a>
+  </div>
+</footer>
+
+<script>window.STATIC_BUILD = true;</script>
+<script src="static/demo.js?v=20260908-8"></script>
+</body>
+</html>

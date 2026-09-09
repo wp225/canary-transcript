@@ -1,0 +1,199 @@
+/* Visual language borrowed from sonomaps: cream paper, ink at alpha steps,
+   monospace throughout, hairline rules, square corners, one brick accent. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --paper: #f2ede4;
+  --ink: 42, 42, 50;
+  --accent: 160, 50, 50;
+  --line: rgba(42, 42, 50, 0.12);
+  --line-strong: rgba(42, 42, 50, 0.18);
+  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas", monospace;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: rgb(var(--ink));
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: rgba(var(--ink), 0.55); text-decoration: none; border-bottom: 1px solid var(--line); }
+a:hover { color: rgba(var(--ink), 0.8); }
+.container { max-width: min(1520px, 95vw); margin: 0 auto; padding: 0 1.5rem; }
+
+/* ── Masthead ─────────────────────────────────── */
+header { border-bottom: 1px solid var(--line); padding: 4rem 0 3rem; text-align: center; }
+.pill {
+  display: block; font-size: 10px; font-weight: 500; letter-spacing: 2.5px;
+  text-transform: uppercase; color: rgba(var(--ink), 0.3); margin-bottom: 1.6rem;
+}
+header h1 {
+  font-family: var(--mono); font-size: clamp(22px, 4vw, 38px); font-weight: 600;
+  letter-spacing: 0.36em; line-height: 1.1; text-transform: uppercase;
+  color: rgba(var(--ink), 0.52); text-indent: 0.36em; margin-bottom: 1.2rem;
+}
+header h1 span { display: block; font-weight: 300; color: rgba(var(--ink), 0.22); }
+header .subtitle {
+  max-width: 48ch; margin: 0 auto 2.2rem; font-size: 10px; font-weight: 400;
+  letter-spacing: 2.5px; line-height: 1.8; text-transform: uppercase;
+  color: rgba(var(--ink), 0.3);
+}
+.btn-row { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; height: 44px;
+  padding: 0 32px; border: 1.5px solid var(--line-strong); background: transparent;
+  color: rgba(var(--ink), 0.55); font: inherit; font-size: 11px; font-weight: 500;
+  letter-spacing: 3px; text-transform: uppercase; cursor: pointer;
+  transition: border-color .2s, background .2s, color .2s;
+}
+.btn:hover { border-color: rgba(var(--ink), 0.35); background: rgba(var(--ink), 0.03); color: rgba(var(--ink), 0.72); }
+input[type="file"] { display: none; }
+.status {
+  margin-top: 1.4rem; font-size: 9px; font-weight: 500; letter-spacing: 2px;
+  text-transform: uppercase; color: rgba(var(--ink), 0.28);
+}
+.status.error { color: rgba(var(--accent), 0.75); }
+
+/* ── Sample picker ────────────────────────────── */
+.sample-picker { display: flex; flex-wrap: wrap; gap: 0; justify-content: center; margin-top: 1.6rem; }
+.sample-picker button {
+  height: 28px; padding: 0 14px; border: 1px solid var(--line); background: transparent;
+  color: rgba(var(--ink), 0.35); font: inherit; font-size: 10px; font-weight: 500;
+  letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all .12s;
+}
+.sample-picker button + button { border-left: none; }
+.sample-picker button:hover { color: rgba(var(--ink), 0.6); background: rgba(var(--ink), 0.02); }
+.sample-picker button[aria-pressed="true"] { color: rgba(var(--ink), 0.7); background: rgba(var(--ink), 0.05); }
+
+/* Once there is something to look at, the masthead gets out of the way. */
+body.has-results header { padding: 1.1rem 0 0.9rem; text-align: left; }
+body.has-results header .container { display: flex; align-items: center; flex-wrap: wrap; gap: 0 1.4rem; }
+body.has-results header .pill, body.has-results header .subtitle { display: none; }
+body.has-results header h1 {
+  font-size: 14px; letter-spacing: 5px; margin: 0; text-indent: 0;
+}
+body.has-results header h1 span { display: inline; }
+body.has-results .btn { height: 26px; padding: 0 14px; font-size: 9px; letter-spacing: 2px; border-width: 1px; }
+body.has-results .status { margin: 0; }
+body.has-results .sample-picker { margin: 0; }
+body.has-results .results-section { flex: 1 0 100%; }
+
+/* ── Panels ───────────────────────────────────── */
+.results-section { padding-top: 1.8rem; }
+.result-card { border: 1px solid var(--line); padding: 1.2rem 1.3rem 1.3rem; margin-bottom: 1.3rem; }
+.card-header { display: flex; align-items: baseline; gap: 0.9rem; margin-bottom: 1rem; }
+.bird-badge {
+  padding: 4px 10px; border: 1px solid var(--line); color: rgba(var(--ink), 0.4);
+  font-size: 9px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase;
+}
+.card-meta {
+  font-size: 10px; font-weight: 400; letter-spacing: 1.2px;
+  color: rgba(var(--ink), 0.38); font-variant-numeric: tabular-nums;
+}
+.card-meta strong { color: rgba(var(--ink), 0.62); font-weight: 500; }
+
+/* ── Zoom bar ─────────────────────────────────── */
+.zoom-bar { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.7rem; }
+.zoom-btn {
+  width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); background: transparent;
+  color: rgba(var(--ink), 0.45); font: inherit; font-size: 12px; line-height: 1;
+  cursor: pointer; transition: border-color .12s, color .12s;
+}
+.zoom-btn.wide { width: auto; padding: 0 10px; font-size: 9px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; }
+.zoom-btn:hover { border-color: rgba(var(--ink), 0.3); color: rgba(var(--ink), 0.7); }
+/* Ticked wheel slider, as on the sonomaps control bar. */
+#zoom-range {
+  -webkit-appearance: none; appearance: none; flex: 1; max-width: 220px; height: 26px;
+  background: repeating-linear-gradient(to right,
+    rgba(var(--ink), 0.22) 0px, rgba(var(--ink), 0.22) 1px,
+    transparent 1px, transparent 8px) center / 100% 14px no-repeat;
+  outline: none; cursor: pointer;
+}
+#zoom-range::-webkit-slider-runnable-track { height: 26px; background: transparent; }
+#zoom-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 2px; height: 20px; margin-top: 3px;
+  background: rgba(var(--ink), 0.55); border: none; cursor: pointer;
+}
+#zoom-range::-moz-range-track { height: 26px; background: transparent; }
+#zoom-range::-moz-range-thumb { width: 2px; height: 20px; border: none; border-radius: 0; background: rgba(var(--ink), 0.55); cursor: pointer; }
+
+/* ── Spectrogram viewer ───────────────────────── */
+.spec-viewer { display: flex; align-items: stretch; border: 1px solid var(--line); overflow: hidden; }
+.freq-gutter { position: relative; flex: 0 0 44px; border-right: 1px solid var(--line); }
+.freq-gutter span {
+  position: absolute; right: 6px; transform: translateY(-50%);
+  font-size: 8px; letter-spacing: 1px; color: rgba(var(--ink), 0.3);
+}
+.spec-scroll { flex: 1; overflow-x: auto; overflow-y: hidden; cursor: grab; }
+.spec-scroll.dragging { cursor: grabbing; }
+.spec-track { position: relative; }
+.spec-track img { display: block; width: 100%; height: auto; }
+.seg-layer, .playhead { position: absolute; top: 0; pointer-events: none; }
+.seg-layer { left: 0; right: 0; }
+/* Boundaries sit on a cream→ink spectrogram, so they are brick, not cyan. */
+.seg-box {
+  position: absolute; top: 0; background: rgba(var(--accent), 0.06);
+  border-left: 1.5px solid rgba(var(--accent), 0.42);
+  border-right: 1.5px solid rgba(var(--accent), 0.2);
+  pointer-events: auto; cursor: pointer;
+}
+.seg-box:hover { background: rgba(var(--accent), 0.13); }
+.seg-box.active { background: rgba(var(--accent), 0.18); border-color: rgba(var(--accent), 0.9); }
+.playhead { width: 1px; background: rgba(var(--accent), 0.8); display: none; }
+.ruler { position: relative; height: 16px; border-top: 1px solid var(--line); }
+.ruler span {
+  position: absolute; top: 1px; transform: translateX(3px);
+  font-size: 8px; letter-spacing: 1px; color: rgba(var(--ink), 0.3);
+}
+.ruler i { position: absolute; top: 0; width: 1px; height: 4px; background: rgba(var(--ink), 0.18); }
+.label-lane { position: relative; border-top: 1px solid var(--line); }
+.lane-token {
+  position: absolute; transform: translateX(-50%); font-size: 10px; line-height: 1.3;
+  padding: 1px 5px; color: rgba(var(--ink), 0.45); border: 1px solid var(--line);
+  background: var(--paper); white-space: nowrap; cursor: pointer;
+}
+.lane-token.hidden { display: none; }
+.lane-token.active { color: rgba(var(--accent), 0.85); border-color: rgba(var(--accent), 0.3); background: rgba(var(--accent), 0.05); z-index: 3; }
+.lane-tick { position: absolute; width: 1px; background: rgba(var(--ink), 0.14); }
+.lane-tick.active { background: rgba(var(--accent), 0.6); }
+
+.notice {
+  margin-top: 0.9rem; padding: 0.6rem 0.8rem; border: 1px solid rgba(var(--accent), 0.22);
+  color: rgba(var(--accent), 0.75); font-size: 10px; letter-spacing: 1.2px;
+}
+
+/* ── Manifold ─────────────────────────────────── */
+.manifold-card { padding: 0; }
+.scatter { display: block; width: 100%; height: clamp(420px, 56vh, 680px); background: var(--paper); cursor: grab; touch-action: none; }
+.scatter.dragging { cursor: grabbing; }
+.scatter-hint { padding: 0.8rem 1.1rem 1rem; border-top: 1px solid var(--line); line-height: 1.7; }
+
+/* ── Player ───────────────────────────────────── */
+.player-row { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.9rem; }
+.play-btn {
+  flex-shrink: 0; width: 28px; height: 28px; padding: 0; border-radius: 50%;
+  border: 1.5px solid var(--line-strong); background: transparent;
+  color: rgba(var(--ink), 0.45); font: inherit; font-size: 9px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .15s;
+}
+.play-btn:hover { border-color: rgba(var(--ink), 0.35); background: rgba(var(--ink), 0.03); }
+.play-btn.playing { border-color: rgba(var(--accent), 0.35); background: rgba(var(--accent), 0.04); color: rgba(var(--accent), 0.7); }
+
+footer {
+  padding: 2.2rem 0; border-top: 1px solid var(--line); font-size: 9px;
+  font-weight: 500; letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(var(--ink), 0.25);
+}
+footer a { border-bottom-color: rgba(var(--ink), 0.15); }
+
+@media (max-width: 580px) {
+  header { padding: 2.4rem 0 2rem; }
+  .card-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  header h1 { letter-spacing: 0.24em; text-indent: 0.24em; }
+}
+
+/* The full view sits inside the landing page hero. */
+.hero .results-section { border-bottom: none; padding-bottom: 0; text-align: left; }
+.hero .results-section .container { max-width: none; padding: 0; }

@@ -1,0 +1,49 @@
+name: Deploy GitHub Pages
+
+# site/ is committed rather than built here: the segmentation model lives in the
+# sibling birdtranscript repo, so CI cannot regenerate the baked sample payloads.
+# Rebuild locally with `python build_site.py` and commit the result.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check the committed site is present
+        run: test -f site/index.html && test -f site/api/samples.json
+
+      - name: Check site/ is not stale
+        # Catches the easy mistake: editing static/ and forgetting to rebuild.
+        run: diff -r static site/static --exclude=index.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
