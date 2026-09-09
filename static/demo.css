@@ -10,7 +10,7 @@
   --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas", monospace;
   /* Masthead crest. Tweak these two: size is the bird's height relative to the
      wordmark, lift seats it on the baseline (raise it as size grows). */
-  --crest-size: 1.5em;
+  --crest-size: 1.9em;
   --crest-lift: -0.42em;
 }
 html { scroll-behavior: smooth; }
