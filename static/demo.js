@@ -3,11 +3,11 @@ const startButton = document.getElementById('start-upload');
 const status = document.getElementById('status');
 const picker = document.getElementById('sample-picker');
 
-/* The GitHub Pages copy has no backend: samples are pre-baked to JSON by
-   build_site.py, and paths must stay relative because project Pages are served
-   from /<repo>/ rather than the domain root. */
+/* Every URL is relative, so the page works both at the server root and under
+   the /<repo>/ subpath GitHub Pages serves from. The Pages copy has no backend:
+   build_site.py pre-bakes the samples to JSON files the page GETs instead. */
 const STATIC_BUILD = Boolean(window.STATIC_BUILD);
-const apiUrl = (path) => (STATIC_BUILD ? `api/${path}.json` : `/api/${path}`);
+const apiUrl = (path) => `api/${path}${STATIC_BUILD ? '.json' : ''}`;
 const resultsSection = document.getElementById('results');
 const summary = document.getElementById('summary');
 const notice = document.getElementById('notice');
@@ -452,10 +452,7 @@ async function loadSamplePreview(sample, button) {
     const response = await fetch(apiUrl(path), STATIC_BUILD ? undefined : { method: 'POST' });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || 'Request failed');
-    if (sample.audio) {
-      const rel = sample.audio.replace(/\\/g, '/');
-      player.src = STATIC_BUILD ? rel : `/${rel}`;
-    }
+    if (sample.audio) player.src = sample.audio.replace(/\\/g, '/');
     showResults(payload);
     showStatus(`Loaded ${payload.source?.bird_name || sampleId}.`);
   } catch (error) {
@@ -853,7 +850,7 @@ async function uploadAndTranscribe(file) {
   form.append('file', file);
 
   try {
-    const response = await fetch('/api/transcribe', { method: 'POST', body: form });
+    const response = await fetch(apiUrl('transcribe'), { method: 'POST', body: form });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || 'Request failed');
 

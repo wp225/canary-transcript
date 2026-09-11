@@ -1,7 +1,7 @@
 """Bake the demo into a static site for GitHub Pages.
 
-Pages runs no Python, and the segmentation model lives in the sibling birdtranscript
-repo, so CI cannot do this: run it locally, commit site/, and let the workflow upload.
+Pages runs no Python, and the sample recordings in demo_samples/ are local-only, so
+CI cannot do this: run it locally, commit site/, and let the workflow upload.
 
 Each sample is transcribed through the same code path the server uses, and the result
 is written where the client would otherwise POST. Upload stays server-only.
@@ -29,11 +29,10 @@ def main() -> None:
     (OUT / "api" / "samples").mkdir(parents=True)
     (OUT / "spectrograms").mkdir()
 
-    # Static assets. Project Pages are served from /<repo>/, so a leading slash
-    # would escape the site root: every reference has to be relative.
+    # Static assets. index.html already uses relative URLs, so it only needs telling
+    # that there is no backend behind this copy.
     shutil.copytree(app.BASE_DIR / "static", OUT / "static")
     index = (app.BASE_DIR / "static" / "index.html").read_text()
-    index = index.replace('href="/static/', 'href="static/').replace('src="/static/', 'src="static/')
     index = index.replace("<script src=", "<script>window.STATIC_BUILD = true;</script>\n<script src=", 1)
     (OUT / "index.html").write_text(index)
     (OUT / "static" / "index.html").unlink()  # only the root copy is served
