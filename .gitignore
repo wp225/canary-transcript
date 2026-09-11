@@ -167,7 +167,7 @@ venv.bak/
 
 # mkdocs documentation  (not used here)
 # site/ is the built GitHub Pages artifact and IS committed: CI cannot rebuild
-# it, because the segmentation model lives in the sibling birdtranscript repo.
+# it, because the sample recordings in demo_samples/ are local-only.
 
 # mypy
 .mypy_cache/

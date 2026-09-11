@@ -4,8 +4,10 @@ python-multipart==0.0.32
 librosa==1.0.0
 soundfile==0.14.0
 numpy==2.5.2
+pandas==3.0.5  # models/extract_features_temporal.py, and to unpickle the artifact
 scipy==1.18.1
 matplotlib==3.11.1
 # must match the version that pickled matches_temporal.pkl
 scikit-learn==1.7.2
 torch==2.14.0
+tqdm==4.70.0  # imported by models/extract_features_temporal.py

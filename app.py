@@ -2,7 +2,6 @@ import base64
 import io
 import os
 import pickle
-import sys
 import tempfile
 import traceback
 from functools import lru_cache
@@ -25,15 +24,13 @@ from starlette.staticfiles import StaticFiles
 
 
 BASE_DIR = Path(__file__).resolve().parent
-# Models and the clustering artifact live in the sibling research repo. Override with
-# BIRDTRANSCRIPT_ROOT to run this demo from a checkout somewhere else.
-BIRDTRANSCRIPT_ROOT = Path(
-    os.environ.get("BIRDTRANSCRIPT_ROOT", "/supernova/data/home/george/codeBase/birdtranscript")
-)
-ARTIFACT_PATH = BIRDTRANSCRIPT_ROOT / "notebooks/bpa_pipeline_final/results/bpa_debug/matches_temporal.pkl"
-EXTRACTOR_PATH = BIRDTRANSCRIPT_ROOT / "scripts/extract_features_temporal.py"
-SEGMENT_MODEL_PATH = BIRDTRANSCRIPT_ROOT / "saved_models/pooled/pooled_all.pt"
-SEGMENT_MODEL_MODULE_PATH = BIRDTRANSCRIPT_ROOT / "models/conv_rnn.py"
+# Segmentation model, feature extractor and clustering artifact, copied from the
+# birdtranscript research repo. The .pt and .pkl are stored with Git LFS.
+MODELS_DIR = BASE_DIR / "models"
+ARTIFACT_PATH = MODELS_DIR / "matches_temporal.pkl"
+EXTRACTOR_PATH = MODELS_DIR / "extract_features_temporal.py"
+SEGMENT_MODEL_PATH = MODELS_DIR / "pooled_all.pt"
+SEGMENT_MODEL_MODULE_PATH = MODELS_DIR / "conv_rnn.py"
 INDEX_HTML = BASE_DIR / "static" / "index.html"
 SAMPLE_INDEX_PATH = BASE_DIR / "demo_samples" / "all_samples.json"
 
@@ -79,7 +76,12 @@ SPEC_CMAP = matplotlib.colors.LinearSegmentedColormap.from_list(
 PCA_FIT_SAMPLE = 50000
 PCA_REFERENCE_POINTS = 1200
 
-sys.path.insert(0, str(BIRDTRANSCRIPT_ROOT))
+def require_lfs_object(path: Path) -> Path:
+    """Fail clearly when a Git LFS file was cloned as its pointer, not its contents."""
+    with path.open("rb") as fh:
+        if fh.read(64).startswith(b"version https://git-lfs"):
+            raise RuntimeError(f"{path.name} is a Git LFS pointer; run `git lfs pull` to fetch it.")
+    return path
 
 
 def load_external_module(module_name: str, module_path: Path):
@@ -102,7 +104,7 @@ def load_segmentation_model() -> torch.nn.Module:
     if segmentor_model is None:
         segmentor_module = load_external_module("birdtranscript_conv_rnn", SEGMENT_MODEL_MODULE_PATH)
         model = segmentor_module.ConvRNNSegmentor(p_dropout=0.2)
-        model.load_state_dict(torch.load(SEGMENT_MODEL_PATH, map_location="cpu"), strict=True)
+        model.load_state_dict(torch.load(require_lfs_object(SEGMENT_MODEL_PATH), map_location="cpu"), strict=True)
         model.eval()
         segmentor_model = model
     return segmentor_model
@@ -118,7 +120,7 @@ def load_pipeline() -> Dict[str, Any]:
     if not ARTIFACT_PATH.exists():
         raise FileNotFoundError(f"Missing pipeline artifact: {ARTIFACT_PATH}")
 
-    with ARTIFACT_PATH.open("rb") as fh:
+    with require_lfs_object(ARTIFACT_PATH).open("rb") as fh:
         payload = pickle.load(fh)
 
     bpa = dict(payload["bpa_config"])

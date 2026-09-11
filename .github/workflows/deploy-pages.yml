@@ -1,7 +1,9 @@
 name: Deploy GitHub Pages
 
-# site/ is committed rather than built here: the segmentation model lives in the
-# sibling birdtranscript repo, so CI cannot regenerate the baked sample payloads.
+# site/ is committed rather than built here: the sample recordings it bakes live
+# in demo_samples/, which is local-only, so CI cannot regenerate the payloads.
+# Checkout leaves Git LFS files as pointers (lfs: false), so deploys never spend
+# LFS bandwidth downloading the model.
 # Rebuild locally with `python build_site.py` and commit the result.
 
 on:

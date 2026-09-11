@@ -23,7 +23,12 @@ Click a syllable to hear it, drag to scroll, `Ctrl`/`⌘` + scroll to zoom.
 
 ## Running it
 
+The model and the clustering artifact are stored with [Git LFS](https://git-lfs.com),
+so install it before cloning (or run `git lfs pull` afterwards):
+
 ```bash
+git lfs install
+git clone https://github.com/wp225/canary-transcript.git && cd canary-transcript
 python -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
 ./.venv/bin/python -m uvicorn app:app --reload
@@ -31,18 +36,12 @@ python -m venv .venv
 
 Then open http://127.0.0.1:8000.
 
-The model and the clustering artifact live in the sibling `birdtranscript`
-research repo, not here. If your checkout is elsewhere:
-
-```bash
-BIRDTRANSCRIPT_ROOT=/path/to/birdtranscript ./.venv/bin/python -m uvicorn app:app
-```
-
 ## Layout
 
 ```
 app.py             FastAPI server: segmentation, transcription, PCA, spectrograms
 build_site.py      bakes the static GitHub Pages copy into site/
+models/            segmentation model, feature extractor, clustering artifact (Git LFS)
 static/            the whole front end — one HTML file, one CSS file, one JS file
 site/              built Pages artifact (committed; see below)
 tests/             unittest suite for the segmentation front end
@@ -57,15 +56,14 @@ to `site/spectrograms/`, and every path is relative because project Pages are
 served from `/<repo>/`. **Upload is disabled there** — it needs the model, so it
 works only against a local server.
 
-`site/` is committed rather than built in CI, because CI has no access to the
-model. After changing `static/`, `app.py`, or the samples, rebuild and commit:
+`site/` is committed rather than built in CI, because the recordings it bakes
+live in `demo_samples/`, which is kept out of git as large local media. After
+changing `static/`, `app.py`, `models/`, or the samples, rebuild and commit:
 
 ```bash
 ./.venv/bin/python build_site.py
 ```
 
-Rebuilding needs both the model and the recordings in `demo_samples/`, which are
-kept out of git as large local media — so only a machine with both can do it.
 Pushing to `main` deploys `site/` via `.github/workflows/deploy-pages.yml`, which
 fails the build if `site/static/` has drifted from `static/`, so a forgotten
 rebuild is caught rather than silently shipping a stale page.
