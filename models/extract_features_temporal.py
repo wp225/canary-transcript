@@ -15,7 +15,7 @@ Also computes f0_slope (semitones/frame) as metadata — not part of the 26-dim 
 used for matching, but stored for BPA label generation.
 
 Run:
-    cd birdtranscript
+    cd <research repo root>
     nohup python scripts/extract_features_temporal.py > logs/extract_temporal.log 2>&1 &
 
 NOTE: Full bird extraction (~910k syllables) takes several hours.

@@ -25,7 +25,7 @@ from starlette.staticfiles import StaticFiles
 
 BASE_DIR = Path(__file__).resolve().parent
 # Segmentation model, feature extractor and clustering artifact, copied from the
-# birdtranscript research repo. The .pt and .pkl are stored with Git LFS.
+# research pipeline. The .pt and .pkl are stored with Git LFS.
 MODELS_DIR = BASE_DIR / "models"
 ARTIFACT_PATH = MODELS_DIR / "matches_temporal.pkl"
 EXTRACTOR_PATH = MODELS_DIR / "extract_features_temporal.py"
@@ -35,7 +35,7 @@ INDEX_HTML = BASE_DIR / "static" / "index.html"
 SAMPLE_INDEX_PATH = BASE_DIR / "demo_samples" / "all_samples.json"
 
 # Preprocessing constants, fixed by how pooled_all.pt was trained
-# (birdtranscript/dataset.py CanariesSegmentationDataset).
+# (the research pipeline's CanariesSegmentationDataset).
 SR = 44100
 N_FFT = 512
 HOP = 64
@@ -95,14 +95,14 @@ def load_external_module(module_name: str, module_path: Path):
     return module
 
 
-extractor = load_external_module("birdtranscript_feature_extractor", EXTRACTOR_PATH)
+extractor = load_external_module("feature_extractor", EXTRACTOR_PATH)
 segmentor_model = None
 
 
 def load_segmentation_model() -> torch.nn.Module:
     global segmentor_model
     if segmentor_model is None:
-        segmentor_module = load_external_module("birdtranscript_conv_rnn", SEGMENT_MODEL_MODULE_PATH)
+        segmentor_module = load_external_module("conv_rnn_segmentor", SEGMENT_MODEL_MODULE_PATH)
         model = segmentor_module.ConvRNNSegmentor(p_dropout=0.2)
         model.load_state_dict(torch.load(require_lfs_object(SEGMENT_MODEL_PATH), map_location="cpu"), strict=True)
         model.eval()

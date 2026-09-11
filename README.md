@@ -24,11 +24,10 @@ Click a syllable to hear it, drag to scroll, `Ctrl`/`⌘` + scroll to zoom.
 ## Running it
 
 The model and the clustering artifact are stored with [Git LFS](https://git-lfs.com),
-so install it before cloning (or run `git lfs pull` afterwards):
+so run `git lfs install` before cloning this repository (or `git lfs pull` after).
+Then, from the repository root:
 
 ```bash
-git lfs install
-git clone https://github.com/wp225/canary-transcript.git && cd canary-transcript
 python -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
 ./.venv/bin/python -m uvicorn app:app --reload
