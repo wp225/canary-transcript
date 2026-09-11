@@ -40,6 +40,7 @@ Then open http://127.0.0.1:8000.
 ```
 app.py             FastAPI server: segmentation, transcription, PCA, spectrograms
 build_site.py      bakes the static GitHub Pages copy into site/
+build_submission.py  packages the full app as an anonymized zip into dist/
 models/            segmentation model, feature extractor, clustering artifact (Git LFS)
 static/            the whole front end — one HTML file, one CSS file, one JS file
 site/              built Pages artifact (committed; see below)
@@ -77,6 +78,18 @@ cd /tmp/pages && python -m http.server 8093
 
 Serve it over HTTP rather than opening `site/index.html` directly — browsers
 block `fetch()` on `file://` URLs, so the baked data never loads.
+
+## Submission zip
+
+```bash
+./.venv/bin/python build_submission.py   # -> dist/canary-transcript.zip
+```
+
+The online copy only replays the baked samples; the zip is the whole app, model
+and pipeline included, for running on your own recordings. Every file is scanned
+before it goes in: the build refuses a Git LFS pointer, an absolute home path, or
+any term listed in `.anon-terms` (identifying names, one per line), which is kept
+out of git so the list never reaches the anonymous mirror.
 
 ## Tests
 

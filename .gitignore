@@ -227,3 +227,6 @@ __marimo__/
 # Anchored to the repo root: the source media stays local, but the three small
 # sample copies under site/ must ship, or Pages 404s on audio playback.
 /demo_samples/
+
+# Identifying terms for the anonymized submission; must never be committed.
+.anon-terms
