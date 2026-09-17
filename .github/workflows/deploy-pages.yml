@@ -38,6 +38,11 @@ jobs:
         # Catches the easy mistake: editing static/ and forgetting to rebuild.
         run: diff -r static site/static --exclude=index.html
 
+      - name: Check the baked samples match the ones app.py serves
+        # CI cannot regenerate the payloads (no model, no demo_samples/), but it can
+        # refuse to deploy a site/ whose sample set has drifted from app.py.
+        run: python3 check_site.py
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 

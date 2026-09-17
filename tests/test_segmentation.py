@@ -1,3 +1,5 @@
+import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -82,6 +84,28 @@ class SpectrogramRenderTests(unittest.TestCase):
             self.assertLessEqual(tick["frac"], 1.0)
         # mel axis is monotonic: higher frequency sits higher in the image
         self.assertEqual([t["frac"] for t in ticks], sorted(t["frac"] for t in ticks))
+
+
+
+class SiteDriftTests(unittest.TestCase):
+    """check_site.py is what the deploy workflow relies on, so it has to fail closed."""
+
+    def test_passes_on_the_committed_site(self):
+        r = subprocess.run([sys.executable, "check_site.py"], cwd=ROOT,
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_fails_when_the_baked_samples_drift_from_app(self):
+        listing = ROOT / "site" / "api" / "samples.json"
+        original = listing.read_text()
+        try:
+            listing.write_text(json.dumps(json.loads(original)[:-1]))  # forgotten rebuild
+            r = subprocess.run([sys.executable, "check_site.py"], cwd=ROOT,
+                               capture_output=True, text=True)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("stale", r.stdout + r.stderr)
+        finally:
+            listing.write_text(original)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ segmentation and transcription included, so a reviewer can run it on their own
 recordings. Every file is scanned before it goes in, and the build fails on an
 identifying string or on a Git LFS pointer standing in for a real model file.
 
-    ./.venv/bin/python build_submission.py   ->   dist/canary-transcript.zip
+    ./.venv/bin/python build_submission.py   ->   dist/bird-transcript.zip
 """
 import json
 import re
@@ -13,9 +13,9 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-OUT = ROOT / "dist" / "canary-transcript.zip"
-TOP = "canary-transcript"  # folder the zip extracts to
-N_SAMPLES = 3  # GET /api/samples serves the first three
+OUT = ROOT / "dist" / "bird-transcript.zip"
+TOP = "bird-transcript"  # folder the zip extracts to
+# the picker's sample set, taken from the app so this cannot drift
 
 # Identifying terms (names, logins, machine and project names), one per line. The
 # file is kept out of git: this repository is what the anonymous mirror copies, so
@@ -39,9 +39,11 @@ FILES = [
 README = """\
 <p align="center"><img src="static/Canary_blink.gif" alt="" height="150" /></p>
 
-# Canary Transcript
+# Bird Transcript
 
-Upload a canary recording and watch its syllables unfold in time.
+Upload a birdsong recording and watch its syllables unfold in time.
+The current focus species is the canary; the same pipeline carries over to the
+Bengalese finch, and both are among the bundled examples.
 
 - **Segmentation**: a conv-RNN marks syllable boundaries on the spectrogram
 - **Transcription**: each syllable gets a readable label such as `díiiin` or `tib`
@@ -106,10 +108,13 @@ def check(name: str, data: bytes, identifying: re.Pattern) -> None:
 def main() -> None:
     entries = {path: (ROOT / path).read_bytes() for path in FILES}
 
+    import app  # for the one definition of which samples the picker offers
+
     with (ROOT / "demo_samples" / "all_samples.json").open(encoding="utf-8") as fh:
-        samples = json.load(fh)[:N_SAMPLES]
+        samples = app.demo_samples(json.load(fh))
     # Only the fields the server and the page read.
-    samples = [{k: s[k] for k in ("id", "bird_name", "filename", "audio")} for s in samples]
+    samples = [{k: s[k] for k in ("id", "bird_name", "filename", "audio", "display_name")}
+               for s in samples]
     entries["demo_samples/all_samples.json"] = json.dumps(samples, indent=2).encode()
     for s in samples:
         entries[s["audio"]] = (ROOT / s["audio"]).read_bytes()

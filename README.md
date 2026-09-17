@@ -2,10 +2,11 @@
   <img src="static/Canary_blink.gif" alt="" height="150" />
 </p>
 
-<h1 align="center">Canary Transcript</h1>
+<h1 align="center">Bird Transcript</h1>
 
 <p align="center">
-  Upload a canary recording and watch its syllables unfold in time.
+  Upload a birdsong recording and watch its syllables unfold in time.<br />
+  Focus species: canary. The same pipeline carries over to the Bengalese finch.
 </p>
 
 ---
@@ -71,9 +72,9 @@ rebuild is caught rather than silently shipping a stale page.
 To preview exactly what Pages will serve, subpath included:
 
 ```bash
-mkdir -p /tmp/pages && ln -sfn "$PWD/site" /tmp/pages/canary-transcript
+mkdir -p /tmp/pages && ln -sfn "$PWD/site" /tmp/pages/demo
 cd /tmp/pages && python -m http.server 8093
-# open http://127.0.0.1:8093/canary-transcript/
+# open http://127.0.0.1:8093/demo/
 ```
 
 Serve it over HTTP rather than opening `site/index.html` directly — browsers
@@ -82,7 +83,7 @@ block `fetch()` on `file://` URLs, so the baked data never loads.
 ## Submission zip
 
 ```bash
-./.venv/bin/python build_submission.py   # -> dist/canary-transcript.zip
+./.venv/bin/python build_submission.py   # -> dist/bird-transcript.zip
 ```
 
 The online copy only replays the baked samples; the zip is the whole app, model

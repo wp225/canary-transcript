@@ -39,7 +39,7 @@ header h1 {
   color: rgba(var(--ink), 0.52); text-indent: 0.36em; margin-bottom: 1.2rem;
 }
 header h1 span { display: block; font-weight: 300; color: rgba(var(--ink), 0.22); }
-/* Crest between CANARY and TRANSCRIPT. Sized in em so it tracks the wordmark
+/* Crest between BIRD and TRANSCRIPT. Sized in em so it tracks the wordmark
    when the masthead shrinks, and pulled left to offset the trailing letter-space. */
 header h1 .crest {
   height: var(--crest-size); width: auto; vertical-align: var(--crest-lift);
@@ -79,7 +79,7 @@ input[type="file"] { display: none; }
 
 /* Once there is something to look at, the masthead gets out of the way. */
 body.has-results header { padding: 1.1rem 0 0.9rem; text-align: left; }
-body.has-results header .container { display: flex; align-items: center; flex-wrap: wrap; gap: 0 1.4rem; }
+body.has-results header > .container { display: flex; align-items: center; flex-wrap: wrap; gap: 0 1.4rem; }
 body.has-results header .pill, body.has-results header .subtitle { display: none; }
 body.has-results header h1 {
   font-size: 14px; letter-spacing: 5px; margin: 0; text-indent: 0;
@@ -88,7 +88,13 @@ body.has-results header h1 span { display: inline; }
 body.has-results .btn { height: 26px; padding: 0 14px; font-size: 9px; letter-spacing: 2px; border-width: 1px; }
 body.has-results .status { margin: 0; }
 body.has-results .sample-picker { margin: 0; }
-body.has-results .results-section { flex: 1 0 100%; }
+/* min-width:0 is load-bearing. As a flex item this defaults to min-width:auto, so a
+   zoomed-in spectrogram track (duration x px/s -- 26000px on a 13s upload at max zoom)
+   becomes the section's minimum width and stretches the page instead of scrolling
+   inside .spec-scroll. Only uploads add .has-results, which is why samples never
+   showed it. The `>` above matters for the same reason: without it this rule also hit
+   the .container nested inside #results and made .result-card an unshrinkable item. */
+body.has-results .results-section { flex: 1 0 100%; min-width: 0; }
 
 /* ── Panels ───────────────────────────────────── */
 .results-section { padding-top: 1.8rem; }
@@ -114,20 +120,21 @@ body.has-results .results-section { flex: 1 0 100%; }
 .zoom-btn.wide { width: auto; padding: 0 10px; font-size: 9px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; }
 .zoom-btn:hover { border-color: rgba(var(--ink), 0.3); color: rgba(var(--ink), 0.7); }
 /* Ticked wheel slider, as on the sonomaps control bar. */
-#zoom-range {
+#zoom-range, #speed-range {
   -webkit-appearance: none; appearance: none; flex: 1; max-width: 220px; height: 26px;
   background: repeating-linear-gradient(to right,
     rgba(var(--ink), 0.22) 0px, rgba(var(--ink), 0.22) 1px,
     transparent 1px, transparent 8px) center / 100% 14px no-repeat;
   outline: none; cursor: pointer;
 }
-#zoom-range::-webkit-slider-runnable-track { height: 26px; background: transparent; }
-#zoom-range::-webkit-slider-thumb {
+#zoom-range::-webkit-slider-runnable-track, #speed-range::-webkit-slider-runnable-track { height: 26px; background: transparent; }
+#zoom-range::-webkit-slider-thumb, #speed-range::-webkit-slider-thumb {
   -webkit-appearance: none; width: 2px; height: 20px; margin-top: 3px;
   background: rgba(var(--ink), 0.55); border: none; cursor: pointer;
 }
-#zoom-range::-moz-range-track { height: 26px; background: transparent; }
-#zoom-range::-moz-range-thumb { width: 2px; height: 20px; border: none; border-radius: 0; background: rgba(var(--ink), 0.55); cursor: pointer; }
+#zoom-range::-moz-range-track, #speed-range::-moz-range-track { height: 26px; background: transparent; }
+#zoom-range::-moz-range-thumb, #speed-range::-moz-range-thumb { width: 2px; height: 20px; border: none; border-radius: 0; background: rgba(var(--ink), 0.55); cursor: pointer; }
+#speed-range { flex: 0 0 90px; max-width: 90px; }
 
 /* ── Spectrogram viewer ───────────────────────── */
 .spec-viewer { display: flex; align-items: stretch; border: 1px solid var(--line); overflow: hidden; }
@@ -207,3 +214,4 @@ footer a { border-bottom-color: rgba(var(--ink), 0.15); }
 /* The full view sits inside the landing page hero. */
 .hero .results-section { border-bottom: none; padding-bottom: 0; text-align: left; }
 .hero .results-section .container { max-width: none; padding: 0; }
+.scatter-hint em { font-style: normal; color: rgba(var(--ink), 0.62); }

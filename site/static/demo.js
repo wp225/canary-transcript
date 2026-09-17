@@ -29,6 +29,7 @@ const LANE_ROWS = 2;
 const ROW_HEIGHT = 19;
 const LABEL_GAP = 4;
 const MAX_PX_PER_S = 2000;
+
 const RULER_STEPS = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 60];
 
 let data = null;          // last /api/transcribe payload
@@ -326,6 +327,17 @@ playButton.addEventListener('click', () => {
   if (player.paused) { stopAt = null; player.play(); } else { player.pause(); }
 });
 
+/* Playhead, syllable highlight and manifold all read player.currentTime, so they
+   follow the rate for free. defaultPlaybackRate keeps it across sample swaps. */
+const speedRange = document.getElementById('speed-range');
+const speedLabel = document.getElementById('speed-label');
+speedRange.addEventListener('input', () => {
+  const rate = Number(speedRange.value);
+  player.defaultPlaybackRate = rate;
+  player.playbackRate = rate;
+  speedLabel.textContent = `${rate.toFixed(2)}\u00d7`;
+});
+
 /* ── rendering ────────────────────────────────────────────────────────────── */
 function buildSpectrogramLayer() {
   const spec = data.spectrogram;
@@ -426,10 +438,10 @@ async function loadPreloadedSamples() {
     const samples = await response.json();
 
     picker.innerHTML = '';
-    samples.forEach((sample) => {
+    samples.forEach((sample, i) => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = `${sample.bird_name} · ${sample.filename}`;
+      button.textContent = sample.display_name || `Example ${i + 1}`;
       button.addEventListener('click', () => loadSamplePreview(sample, button));
       picker.appendChild(button);
     });
@@ -454,7 +466,7 @@ async function loadSamplePreview(sample, button) {
     if (!response.ok) throw new Error(payload.detail || 'Request failed');
     if (sample.audio) player.src = sample.audio.replace(/\\/g, '/');
     showResults(payload);
-    showStatus(`Loaded ${payload.source?.bird_name || sampleId}.`);
+    showStatus(`Loaded ${button.textContent}.`);
   } catch (error) {
     showStatus(error.message, true);
   }
@@ -517,30 +529,6 @@ function project3(point) {
 
 
 /* Emission-time ramp, cool → warm, all dark enough to read on cream paper. */
-const RAMP = [
-  [0.0, [40, 58, 100]],
-  [0.35, [92, 66, 106]],
-  [0.72, [160, 50, 50]],
-  [1.0, [166, 112, 40]],
-];
-
-function rampColour(t, alpha = 1) {
-  const clamped = Math.max(0, Math.min(1, t));
-  let lo = RAMP[0];
-  let hi = RAMP[RAMP.length - 1];
-  for (let i = 0; i < RAMP.length - 1; i += 1) {
-    if (clamped >= RAMP[i][0] && clamped <= RAMP[i + 1][0]) { lo = RAMP[i]; hi = RAMP[i + 1]; break; }
-  }
-  const span = hi[0] - lo[0] || 1;
-  const k = (clamped - lo[0]) / span;
-  const rgb = lo[1].map((v, i) => Math.round(v + (hi[1][i] - v) * k));
-  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
-}
-
-function segmentRamp(seg) {
-  return data.duration_s ? (seg.start_s + seg.end_s) / 2 / data.duration_s : 0;
-}
-
 /* Centre on this recording's own cloud and scale it to the panel, fitting width and
    height separately so a long thin cloud fills the long axis. Percentiles rather
    than extremes, so one stray syllable cannot shrink everything else to a dot. */
@@ -594,8 +582,8 @@ function drawScatter() {
   if (!data || !data.pca) return;
   const { width, height } = sizeScatter();
   const ctx = scatterCtx;
-  const padLeft = 78;    // colour scale
-  const padRight = 104;  // coefficient readout
+  const padLeft = 24;    // the colour scale that used to sit here is gone
+  const padRight = 140;  // per-syllable driver readout
   const cx = padLeft + (width - padLeft - padRight) / 2;
   const cy = height / 2 + 8;
   const depth = 3.4;
@@ -622,6 +610,7 @@ function drawScatter() {
   const points = data.segments
     .map((seg, index) => (seg.pca ? { seg, index, p: toScreen(seg.pca) } : null))
     .filter(Boolean);
+
 
   // song order: faint links between consecutive syllables
   ctx.strokeStyle = 'rgba(42, 42, 50, 0.14)';
@@ -654,15 +643,17 @@ function drawScatter() {
       if (reserve(item)) kept.add(item.index);
     });
 
-  // markers, far to near
-  const ordered = [...points].sort((a, b) => b.p.z - a.p.z);
+  // selected marker drawn last so nothing in front of it can hide it
+  const ordered = [...points].sort(
+    (a, b) => (a.index === activeIndex) - (b.index === activeIndex) || b.p.z - a.p.z,
+  );
 
   projected = [];
   ordered.forEach((item) => {
     const { x, y, f } = item.p;
     const active = item.index === activeIndex;
-    const colour = rampColour(segmentRamp(item.seg), 0.95);
-    const size = (active ? 7 : 3.6) * f;
+    const colour = 'rgba(42, 42, 50, 0.3)';
+    const size = (active ? 7 : 3.4) * f;
 
     ctx.shadowColor = 'rgba(160, 50, 50, 0.35)';
     ctx.shadowBlur = active ? 10 * f : 0;
@@ -716,41 +707,44 @@ function drawScatterChrome(ctx, width, height, toScreen) {
   );
   ctx.letterSpacing = '0px';
 
-  // vertical emission-time scale
-  const barX = 20;
-  const barTop = 78;
-  const barH = Math.max(80, height - barTop - 42);
-  for (let i = 0; i < barH; i += 1) {
-    ctx.fillStyle = rampColour(1 - i / barH, 0.95);
-    ctx.fillRect(barX, barTop + i, 7, 1);
-  }
-  ctx.font = '7.5px "JetBrains Mono", ui-monospace, monospace';
-  ctx.fillStyle = 'rgba(42, 42, 50, 0.34)';
-  ctx.fillText(`${data.duration_s.toFixed(1)}s`, barX + 11, barTop + 5);
-  ctx.fillText('0.0s', barX + 11, barTop + barH);
-  ctx.save();
-  ctx.translate(barX - 6, barTop + barH / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillStyle = 'rgba(42, 42, 50, 0.28)';
-  ctx.fillText('EMISSION TIME', -34, 0);
-  ctx.restore();
+  // What this song is made of: the names in the transcript, how often each occurs, and
+  // which one the selected syllable was given.
+  const listX = width - 132;
+  const listW = 116;
+  const focusSeg = data.segments[activeIndex >= 0 ? activeIndex : 0];
+  const lit = focusSeg ? focusSeg.label : null;
 
-  // coefficient readout
-  const listX = width - 96;
-  ctx.font = '6.5px "JetBrains Mono", ui-monospace, monospace';
-  const names = spec.feature_names || [];
-  const rowH = Math.min(11, (height - 60) / Math.max(names.length, 1));
-  names.forEach((name, i) => {
-    const y = 30 + i * rowH;
-    const load = spec.loadings[i] ?? 0;
-    ctx.fillStyle = `rgba(42, 42, 50, ${0.22 + load * 0.5})`;
-    ctx.fillText(name.toUpperCase().slice(0, 15), listX + 16, y);
-    ctx.fillStyle = rampColour(load, 0.5 + load * 0.45);
-    ctx.fillRect(listX, y - 4, 13 * load + 1, 3);
+  const counts = new Map();
+  data.segments.forEach((sg) => counts.set(sg.label, (counts.get(sg.label) || 0) + 1));
+  const rows = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const most = rows.length ? rows[0][1] : 1;
+
+  ctx.font = '500 7px "JetBrains Mono", ui-monospace, monospace';
+  ctx.fillStyle = 'rgba(42, 42, 50, 0.42)';
+  ctx.fillText('SYLLABLES IN THIS SONG', listX, 26);
+
+  const top = 48;
+  const rowH = Math.min(22, (height - 90) / Math.max(rows.length, 1));
+  rows.forEach(([name, n], i) => {
+    const y = top + i * rowH;
+    const on = name === lit;
+    if (on) {
+      ctx.fillStyle = 'rgba(160, 50, 50, 0.85)';
+      ctx.fillRect(listX - 9, y - 4, 4, 4);
+    }
+    ctx.font = `${on ? '500 ' : ''}7.5px "JetBrains Mono", ui-monospace, monospace`;
+    ctx.fillStyle = on ? 'rgba(160, 50, 50, 0.9)' : 'rgba(42, 42, 50, 0.45)';
+    ctx.fillText(name.slice(0, 12), listX, y);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = on ? 'rgba(160, 50, 50, 0.7)' : 'rgba(42, 42, 50, 0.3)';
+    ctx.fillText(String(n), listX + listW, y);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = on ? 'rgba(160, 50, 50, 0.55)' : 'rgba(42, 42, 50, 0.16)';
+    ctx.fillRect(listX, y + 4, Math.max(1, (listW * n) / most), 3);
   });
 
   // orientation gizmo
-  const gx = width - 150;
+  const gx = width - 192;   // clear of the driver chart, which now runs to width - 132
   const gy = 40;
   const axes = [[[1, 0, 0], 'PC1'], [[0, 1, 0], 'PC2'], [[0, 0, 1], 'PC3']];
   axes.forEach(([axis, name]) => {
@@ -869,3 +863,4 @@ fileInput.addEventListener('change', () => {
     uploadAndTranscribe(fileInput.files[0]);
   }
 });
+

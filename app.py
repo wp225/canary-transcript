@@ -34,6 +34,29 @@ SEGMENT_MODEL_MODULE_PATH = MODELS_DIR / "conv_rnn.py"
 INDEX_HTML = BASE_DIR / "static" / "index.html"
 SAMPLE_INDEX_PATH = BASE_DIR / "demo_samples" / "all_samples.json"
 
+# The examples the picker offers, named here rather than sliced off the index so the
+# server and build_site.py cannot drift apart. Canary is the focus species; the two
+# finch recordings are what the "generalizes to Bengalese finch" claim rests on, so
+# the demo has to actually show them.
+DEMO_SAMPLE_IDS = ("canary01", "canary02", "canary03", "canary04", "finch01", "finch02")
+
+
+def demo_samples(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The picker's samples, in DEMO_SAMPLE_IDS order, each given a display name.
+
+    Names are by species and position ("Canary 1", "Finch 2") -- the underlying
+    filenames are recording ids that mean nothing to a reader, but which species a
+    recording is does matter now that the page claims to handle more than one.
+    """
+    by_id = {item["id"]: item for item in items}
+    chosen = [by_id[i] for i in DEMO_SAMPLE_IDS if i in by_id]
+    seen: Dict[str, int] = {}
+    for item in chosen:
+        species = "Canary" if item["id"].startswith("canary") else "Finch"
+        seen[species] = seen.get(species, 0) + 1
+        item["display_name"] = f"{species} {seen[species]}"
+    return chosen
+
 # Preprocessing constants, fixed by how pooled_all.pt was trained
 # (the research pipeline's CanariesSegmentationDataset).
 SR = 44100
@@ -314,6 +337,7 @@ def transcribe_audio(audio: np.ndarray) -> Dict[str, Any]:
         scaled_features.append(feat_norm[0])
         cluster_id = int(km_model.predict(feat_norm)[0])
         info = cluster_info.get(cluster_id, {})
+
         cv_label = info.get("cv_label")
         dur_ms = (end_s - start_s) * 1000.0
 
@@ -338,7 +362,9 @@ def transcribe_audio(audio: np.ndarray) -> Dict[str, Any]:
 
     projection = load_projection()
     if scaled_features:
-        coords = projection["pca"].transform(np.vstack(scaled_features)) / projection["scale"]
+        stacked = np.vstack(scaled_features)
+        coords = projection["pca"].transform(stacked) / projection["scale"]
+
         for segment, point in zip(segments, np.round(coords, 4).tolist()):
             segment["pca"] = point
 
@@ -424,7 +450,7 @@ def health() -> Dict[str, str]:
 def list_samples() -> JSONResponse:
     with SAMPLE_INDEX_PATH.open("r", encoding="utf-8") as fh:
         items = json.load(fh)
-    return JSONResponse(items[:3])
+    return JSONResponse(demo_samples(items))
 
 
 @app.post("/api/samples/{sample_id}")

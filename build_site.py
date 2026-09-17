@@ -15,12 +15,11 @@ import librosa
 import app  # loads the segmentation model and the clustering artifact
 
 OUT = app.BASE_DIR / "site"
-N_SAMPLES = 3  # mirrors the items[:3] slice in GET /api/samples
 
 
 def main() -> None:
     with app.SAMPLE_INDEX_PATH.open(encoding="utf-8") as fh:
-        items = json.load(fh)[:N_SAMPLES]
+        items = app.demo_samples(json.load(fh))  # the same set GET /api/samples serves
     if not items:
         raise SystemExit("No samples in the index — nothing to build.")
 
